@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Mario: Petualangan Sistem Pencernaan</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a1a1a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            background: linear-gradient(to bottom, #5c94fc, #b0e0e6);
+            border: 4px solid #fff;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* UI Info atas */
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px #000;
+            z-index: 10;
+        }
+
+        /* Mario / Karakter */
+        #player {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 30px;
+            height: 40px;
+            background: #e52521;
+            border-radius: 5px 5px 0 0;
+            transition: bottom 0.1s linear, left 0.1s linear;
+        }
+        #player::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+        }
+
+        /* Tanah */
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: #d9d9d9;
+            background-image: repeating-linear-gradient(45deg, #c0c0c0 0, #c0c0c0 20px, #d9d9d9 20px, #d9d9d9 40px);
+            border-top: 4px solid #000;
+        }
+
+        /* Rintangan / Pintu Kuis */
+        #obstacle {
+            position: absolute;
+            bottom: 50px;
+            right: 100px;
+            width: 40px;
+            height: 60px;
+            background: #8b4513;
+            border: 3px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        /* Kotak Kuis Overlay */
+        #quiz-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        #question-text {
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .option-btn {
+            background: #ffcc00;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: 0.2s;
+        }
+
+        .option-btn:hover {
+            background: #ffdb4d;
+            transform: scale(1.03);
+        }
+
+        #feedback {
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            min-height: 25px;
+        }
+
+        /* Kontrol Instruksi */
+        #instructions {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Super Mario: Kuis Sistem Pencernaan</h2>
+    <div id="game-container">
+        <div id="ui">
+            <span id="score-display">Skor: 0</span>
+            <span id="level-display">Soal: 1 / 10</span>
+        </div>
+        
+        <div id="player"></div>
+        <div id="obstacle">🚪</div>
+
+        <!-- Modal Kuis -->
+        <div id="quiz-modal">
+            <div id="question-text">Pertanyaan akan muncul di sini...</div>
+            <div class="options-container" id="options-box">
+                <!-- Pilihan tombol akan di-generate via JS -->
+            </div>
+            <div id="feedback"></div>
+        </div>
+    </div>
+
+    <div id="instructions">
+        Gunakan tombol panah <strong>Kanan (➔)</strong> atau <strong>Spasi</strong> untuk berjalan maju mendekati rintangan dan membuka soal!
+    </div>
+
+    <script>
+        // Data 10 Soal Materi Sistem Pencernaan
+        const questions = [
+            {
+                q: "Proses pencernaan mekanik dan kimiawi pertama kali terjadi di bagian...",
+                options: ["Lambung", "Kerongkongan", "Rongga Mulut", "Usus Halus"],
+                answer: 2
+            },
+            {
+                q: "Enzim yang dihasilkan oleh kelenjar ludah untuk memecah karbohidrat kompleks menjadi maltosa adalah...",
+                options: ["Pepsin", "Ptyalin (Amilase)", "Lipase", "Tripsin"],
+                answer: 1
+            },
+            {
+                q: "Gerakan meremas dan mendorong makanan yang terjadi di sepanjang saluran pencernaan disebut gerakan...",
+                options: ["Peristaltik", "Lokokomosi", "Vaskuler", "Refleks"],
+                answer: 0
+            },
+            {
+                q: "Asam lambung (HCl) yang berfungsi membunuh kuman penyakit dan mengaktifkan pepsinogen dihasilkan oleh...",
+                options: ["Hati", "Pankreas", "Dinding Lambung", "Usus Duabelas Jari"],
+                answer: 2
+            },
+            {
+                q: "Organ pencernaan utama tempat terjadinya penyerapan (absorpsi) sari-sari makanan yang paling optimal adalah...",
+                options: ["Usus Besar", "Usus Halus (Ileum/Jejunum)", "Lambung", "Rektum"],
+                answer: 1
+            },
+            {
+                q: "Cairan empedu yang berperan dalam mengemulsikan lemak diproduksi oleh organ...",
+                options: ["Empedu", "Hati", "Pankreas", "Usus Halus"],
+                answer: 1
+            },
+            {
+                q: "Enzim pepsin di dalam lambung berfungsi untuk...",
+                options: ["Mengubah protein menjadi pepton", "Mencerna lemak menjadi asam lemak", "Mengendapkan protein susu", "Membunuh bakteri"],
+                answer: 0
+            },
+            {
+                q: "Organ pencernaan yang berfungsi utama untuk menyerap sisa air dan membusukkan sisa makanan oleh bakteri E. coli adalah...",
+                options: ["Usus Halus", "Usus Besar (Kolon)", "Anus", "Pankreas"],
+                answer: 1
+            },
+            {
+                q: "Enzim yang dihasilkan oleh pankreas untuk mencerna lemak menjadi asam lemak dan gliserol adalah...",
+                options: ["Amilase", "Lipase", "Pepsin", "Renin"],
+                answer: 1
+            },
+            {
+                q: "Bagian akhir dari saluran pencernaan tempat feses disimpan sementara sebelum dikeluarkan adalah...",
+                options: ["Rektum", "Anus", "Appendiks", "Kolon sigmoid"],
+                answer: 0
+            }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let playerPos = 50;
+        let gameActive = true;
+
+        const player = document.getElementById("player");
+        const obstacle = document.getElementById("obstacle");
+        const quizModal = document.getElementById("quiz-modal");
+        const questionText = document.getElementById("question-text");
+        const optionsBox = document.getElementById("options-box");
+        const feedback = document.getElementById("feedback");
+        const scoreDisplay = document.getElementById("score-display");
+        const levelDisplay = document.getElementById("level-display");
+
+        // Kontrol Pergerakan Karakter (Mirip Mario berjalan ke kanan)
+        document.addEventListener("keydown", (e) => {
+            if (!gameActive) return;
+
+            if (e.key === "ArrowRight" || e.key === " ") {
+                if (playerPos < 650) {
+                    playerPos += 15;
+                    player.style.left = playerPos + "px";
+
+                    // Jika pemain mendekati rintangan (posisi ~600px), buka kuis
+                    if (playerPos >= 580) {
+                        openQuiz();
+                    }
+                }
+            }
+        });
+
+        function openQuiz() {
+            gameActive = false;
+            quizModal.style.display = "flex";
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            feedback.textContent = "";
+            const currentQ = questions[currentQuestionIndex];
+            questionText.textContent = `Soal ${currentQuestionIndex + 1}: ${currentQ.q}`;
+            optionsBox.innerHTML = "";
+
+            currentQ.options.forEach((opt, index) => {
+                const btn = document.createElement("button");
+                btn.classList.add("option-btn");
+                btn.textContent = opt;
+                btn.onclick = () => checkAnswer(index);
+                optionsBox.appendChild(btn);
+            });
+
+            levelDisplay.textContent = `Soal: ${currentQuestionIndex + 1} / 10`;
+        }
+
+        function checkAnswer(selectedIndex) {
+            const currentQ = questions[currentQuestionIndex];
+
+            if (selectedIndex === currentQ.answer) {
+                // Jawaban Benar
+                feedback.style.color = "#00ff00";
+                feedback.textContent = "Jawaban Benar! Rintangan terbuka!";
+                score += 10;
+                scoreDisplay.textContent = `Skor: ${score}`;
+
+                setTimeout(() => {
+                    quizModal.style.display = "none";
+                    // Reset posisi pemain mundur sedikit & geser rintangan / lanjut soal
+                    playerPos = 50;
+                    player.style.left = playerPos + "px";
+                    
+                    currentQuestionIndex++;
+                    
+                    if (currentQuestionIndex < questions.length) {
+                        gameActive = true;
+                    } else {
+                        endGame();
+                    }
+                }, 1200);
+
+            } else {
+                // Jawaban Salah
+                feedback.style.color = "#ff4d4d";
+                feedback.textContent = "Jawaban salah, coba lagi!";
+            }
+        }
+
+        function endGame() {
+            quizModal.style.display = "flex";
+            questionText.textContent = "🎉 Selamat! Anda telah melewati semua rintangan sistem pencernaan!";
+            optionsBox.innerHTML = `<button class="option-btn" onclick="location.reload()">Main Lagi</button>`;
+            feedback.textContent = `Skor Akhir Anda: ${score}`;
+        }
+    </script>
+</body>
+</html>
